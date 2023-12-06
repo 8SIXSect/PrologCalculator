@@ -5,7 +5,12 @@ lexer(Input, Output) :-
     InputAsList = exclude(remove_whitespace) of maplist(atom_string)
                                              of atom_chars $ Input,
     Tokens = [],
-    tokenize(InputAsList, Tokens, Output).
+    tokenize(InputAsList, Tokens, NewTokens),
+    
+    EndOfFileToken = token(eof, "eof"),
+
+    append(NewTokens, [EndOfFileToken], Output).
+
 
 
 remove_whitespace(CurrentChar) :-
@@ -207,36 +212,46 @@ parse_for_factor([Token | _], Error, []) :-
 
 
 
-test_parser(UserInput) :-
-    lexer(UserInput, Tokens),
-
-    parse_for_expression(Tokens, Expression, Remaining),
-    !,
-    (Expression = error(parser, Message) ->
-        writeln(Message)
-    ;
-        writeln(Expression),
-        write("Remaining Tokens: "), writeln(Remaining)
-    ).
-
-
-
-test_interpreter(UserInput) :-
-    lexer(UserInput, Tokens),
-
-    parse_for_expression(Tokens, Expression, Remaining),
-    writeln(Remaining),
-
-    interpreter(Expression, Output),
-    !,
-    writeln(Output).
-
-
-
 interpreter(Node, Output) :-
     Node = expression(SingleTerm),
     interpreter(SingleTerm, TermOutput),
     Output = TermOutput.
+
+
+interpreter(Node, Error) :-
+    Node = expression(FirstTerm, _, _),
+    interpreter(FirstTerm, FirstOutput),
+
+    FirstOutput = error(interpreter, _),
+    Error = FirstOutput. 
+
+
+interpreter(Node, Error) :-
+    Node = expression(_, _, SecondTerm),
+    interpreter(SecondTerm, SecondOutput),
+
+    SecondOutput = error(interpreter, _),
+    Error = SecondOutput.
+
+
+interpreter(Node, Output) :-
+    Node = expression(FirstTerm, Operator, SecondTerm),
+    interpreter(FirstTerm, FirstOutput),
+    interpreter(SecondTerm, SecondOutput),
+
+    Operator == add,
+
+    Output is FirstOutput + SecondOutput.
+
+
+interpreter(Node, Output) :-
+    Node = expression(FirstTerm, Operator, SecondTerm),
+    interpreter(FirstTerm, FirstOutput),
+    interpreter(SecondTerm, SecondOutput),
+
+    Operator == minus,
+
+    Output is FirstOutput - SecondOutput.
 
 
 interpreter(Node, Output) :-
@@ -255,7 +270,50 @@ interpreter(Node, Output) :-
     Output is FirstOutput * SecondOutput.
 
 
+interpreter(Node, Error) :-
+    Node = term(_, Operator, SecondFactor),
+    interpreter(SecondFactor, SecondOutput),
+
+    Operator == divide,
+    SecondOutput is 0,
+
+    Error = error(interpreter, "Cant divide by Zero").
+
+
+interpreter(Node, Output) :-
+    Node = term(FirstFactor, Operator, SecondFactor),
+    interpreter(FirstFactor, FirstOutput),
+    interpreter(SecondFactor, SecondOutput),
+
+    Operator == divide,
+
+    Output is FirstOutput / SecondOutput.
+
+
 interpreter(Node, Output) :-
     Node = factor(NumberAsString),
     atom_number(NumberAsString, Output).
+
+
+
+calculate(UserInput) :-
+    lexer(UserInput, Tokens),
+    (Tokens = error(lexer, LexerMessage) ->
+        writeln(LexerMessage)
+    ;
+        parse_for_expression(Tokens, Expression, _),
+        
+        (Expression = error(parser, ParserMessage) ->
+            writeln(ParserMessage)
+        ;
+            interpreter(Expression, Output),
+            (Output = error(interpreter, InterpreterMessage) ->
+                writeln(InterpreterMessage)
+            ;
+                writeln(Output)
+            )
+        )
+    ),
+
+    !.
 

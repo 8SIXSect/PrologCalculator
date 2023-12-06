@@ -35,22 +35,28 @@ tokenize([Head | Tail], Tokens, Output) :-
     append(Tokens, [Token], NewTokens),
     tokenize(Tail, NewTokens, Output).
 
+tokenize([Char | _], _, Output) :-
+    ERROR_MESSAGE = "Unknown Character, ",
+
+    string_concat(ERROR_MESSAGE, Char, ErrorMessageForOutput),
+    Output = error(lexer, ErrorMessageForOutput).
+
 
 operator_token(Operator, Token) :-
     Operator == "+",
-    Token = token(plus, "").
+    Token = token(add, Operator).
 
 operator_token(Operator, Token) :-
     Operator == "-",
-    Token = token(minus, "").
+    Token = token(minus, Operator).
 
 operator_token(Operator, Token) :-
     Operator == "*",
-    Token = token(multiply, "").
+    Token = token(multiply, Operator).
 
 operator_token(Operator, Token) :-
     Operator == "/",
-    Token = token(divide, "").
+    Token = token(divide, Operator).
 
 
 digit_token([], CurrentDigit, CurrentDigit, []).
@@ -65,4 +71,14 @@ digit_token([Char | Rest], CurrentDigit, FinalDigit, Remaining) :-
     char_type(Char, digit),
     string_concat(CurrentDigit, Char, NextDigit),
     digit_token(Rest, NextDigit, FinalDigit, Remaining).
+
+
+parser(Tokens, Tree) :-
+    Tokens = notImplemented,
+    Tree = notImplemented.
+
+
+%parse_for_factor([Token | Rest], FactorNode, Remaining) :-
+%    Remaining = notImplemented.
+
 

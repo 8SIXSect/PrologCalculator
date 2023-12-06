@@ -84,33 +84,67 @@ digit_token([Char | Rest], CurrentDigit, FinalDigit, Remaining) :-
 
 
 
-test_parser(UserInput) :-
-    lexer(UserInput, Tokens),
-
-    parse_for_term(Tokens, TermNode, Remaining),
-    !,
-    (TermNode = error(parser, Message) ->
-        writeln(Message)
-    ;
-        writeln(TermNode),
-        write("Remaining Tokens: "), writeln(Remaining)
-    ).
-
-
-
-parse_for_expression([])
-
-
-
-% This clause must come first before the other terms for error handling
-parse_for_term([Token | Rest], Error, Remaining) :-
-    parse_for_factor([Token | Rest], Error, Remaining),
+parse_for_expression(Tokens, Error, Remaining) :-
+    parse_for_term(Tokens, Error, Remaining),
     Error = error(parser, _),
     !.
 
 
-parse_for_term([Token | Rest], Term, Remaining) :-
-    parse_for_factor([Token | Rest], Factor, RemainingAfterFactor),
+parse_for_expression(Tokens, Expression, Remaining) :-
+    parse_for_term(Tokens, Term, RemainingAfterTerm),
+
+    RemainingAfterTerm = [],
+    Expression = expression(Term),
+    Remaining = [].
+
+
+parse_for_expression(Tokens, Expression, Remaining) :-
+    parse_for_term(Tokens, Term, RemainingAfterTerm),
+
+    RemainingAfterTerm = [Token | _],
+    Token = token(Type, _),
+    
+    not(member(Type, [add, minus])),
+
+    Expression = expression(Term),
+    Remaining = RemainingAfterTerm.
+
+
+parse_for_expression(Tokens, Error, Remaining) :-
+    parse_for_term(Tokens, _, RemainingAfterFirstTerm),
+
+    RemainingAfterFirstTerm = [Token | RemainingAfterOperator],
+    Token = token(Type, _),
+
+    member(Type, [add, minus]),
+
+    parse_for_term(RemainingAfterOperator, Error, Remaining),
+    Error = error(parser, _).
+
+
+parse_for_expression(Tokens, Expression, Remaining) :-
+    parse_for_term(Tokens, FirstTerm, RemainingAfterFirstTerm),
+
+    RemainingAfterFirstTerm = [Token | RemainingAfterOperator],
+    Token = token(Type, _),
+
+    member(Type, [add, minus]),
+
+    parse_for_term(RemainingAfterOperator, SecondTerm, Remaining),
+
+    Expression = expression(FirstTerm, Type, SecondTerm).
+
+
+
+% This clause must come first before the other terms for error handling
+parse_for_term(Tokens, Error, Remaining) :-
+    parse_for_factor(Tokens, Error, Remaining),
+    Error = error(parser, _),
+    !.
+
+
+parse_for_term(Tokens, Term, Remaining) :-
+    parse_for_factor(Tokens, Factor, RemainingAfterFactor),
 
     RemainingAfterFactor = [],
     Term = term(Factor),
@@ -170,4 +204,58 @@ parse_for_factor([Token | _], Error, []) :-
 
     ERROR_MESSAGE = "Expected a digit token",
     Error = error(parser, ERROR_MESSAGE).
+
+
+
+test_parser(UserInput) :-
+    lexer(UserInput, Tokens),
+
+    parse_for_expression(Tokens, Expression, Remaining),
+    !,
+    (Expression = error(parser, Message) ->
+        writeln(Message)
+    ;
+        writeln(Expression),
+        write("Remaining Tokens: "), writeln(Remaining)
+    ).
+
+
+
+test_interpreter(UserInput) :-
+    lexer(UserInput, Tokens),
+
+    parse_for_expression(Tokens, Expression, Remaining),
+    writeln(Remaining),
+
+    interpreter(Expression, Output),
+    !,
+    writeln(Output).
+
+
+
+interpreter(Node, Output) :-
+    Node = expression(SingleTerm),
+    interpreter(SingleTerm, TermOutput),
+    Output = TermOutput.
+
+
+interpreter(Node, Output) :-
+    Node = term(Factor),
+    interpreter(Factor, FactorOutput),
+    Output = FactorOutput.
+
+
+interpreter(Node, Output) :-
+    Node = term(FirstFactor, Operator, SecondFactor),
+    interpreter(FirstFactor, FirstOutput),
+    interpreter(SecondFactor, SecondOutput),
+
+    Operator == multiply,
+
+    Output is FirstOutput * SecondOutput.
+
+
+interpreter(Node, Output) :-
+    Node = factor(NumberAsString),
+    atom_number(NumberAsString, Output).
 

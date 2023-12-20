@@ -29,8 +29,8 @@ A small calculator written in the beautiful language that is Prolog.
 - Whole Numbers
 
 ## Planned Features
-- Multiple Terms (currently, this expression: "5\*5\*5" will not give the correct output)
-- Multiple Expressions (currently, this expression: "5+5+5" will not give the correct output)
+- Multiple Terms (currently, this expression: `5 * 5 * 5` will not give the correct output)
+- Multiple Expressions (currently, this expression: `5 + 5 + 5` will not give the correct output)
 - Exponetation
 - Integers
 - Floating Point Numbers
